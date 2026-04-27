@@ -6,7 +6,7 @@ class CustomerManager:
         self.discount_threshold = 500
 
     def add_customer(self, name, purchases):
-        if name in self.customers.keys():
+        if name in self.customers:
             self.customers[name].extend(purchases)
         else:
             self.customers[name] = purchases
@@ -18,54 +18,63 @@ class CustomerManager:
         self.add_customer(name, purchases)
 
     def generate_report(self):
-        for y, x in self.customers.items():
-            a = 0
-            for z in x:
-                if z['price'] > self.tax_threshold:
-                    taxed_price = z['price'] * (1 + self.tax_rate)
-                    a += taxed_price
-                else:
-                    a += z['price']
-            print(y)
-            if a > self.discount_threshold:
-                print("Eligible for discount")
-            else:
-                if a > 300:
-                    print("Potential future discount customer")
-                else:
-                    print("No discount")
-            if a > 1000:
-                print("VIP Customer!")
-            else:
-                if a > 800:
-                    print("Priority Customer")
+        for customer_name, purchases in self.customers.items():
+            total_spend = self._calculate_total_spend(purchases)
+            print(customer_name)
+            print(self._get_discount_status(total_spend))
+
+            customer_tier = self._get_customer_tier(total_spend)
+            if customer_tier:
+                print(customer_tier)
+
+    def _calculate_total_spend(self, purchases):
+        total_spend = 0
+        for purchase in purchases:
+            total_spend += self._get_purchase_total(purchase)
+        return total_spend
+
+    def _get_purchase_total(self, purchase):
+        price = purchase['price']
+        if price > self.tax_threshold:
+            return price * (1 + self.tax_rate)
+        return price
+
+    def _get_discount_status(self, total_spend):
+        if total_spend > self.discount_threshold:
+            return "Eligible for discount"
+        if total_spend > 300:
+            return "Potential future discount customer"
+        return "No discount"
+
+    def _get_customer_tier(self, total_spend):
+        if total_spend > 1000:
+            return "VIP Customer!"
+        if total_spend > 800:
+            return "Priority Customer"
+        return None
 
     def calculate_shipping_fee(self, purchases):
-        heavy_item = False
-        for purchase in purchases:
-            if purchase.get('weight', 0) > 20:
-                heavy_item = True
-                break
-        if heavy_item:
-            return 50
-        else:
-            return 20
+        return calculate_shipping_fee_for_heavy_items(purchases)
+
+
+def has_purchase_matching(purchases, field, threshold=None, expected_value=True):
+    for purchase in purchases:
+        value = purchase.get(field, 0 if threshold is not None else False)
+        if threshold is not None and value > threshold:
+            return True
+        if threshold is None and value == expected_value:
+            return True
+    return False
 
 def calculate_shipping_fee_for_heavy_items(purchases):
-    for purchase in purchases:
-        if purchase.get('weight', 0) > 20:
-            return 50
+    if has_purchase_matching(purchases, 'weight', threshold=20):
+        return 50
     return 20
 
+
 def calculate_shipping_fee_for_fragile_items(purchases):
-    fragile_item = False
-    for purchase in purchases:
-        if purchase.get('fragile', False):
-            fragile_item = True
-            break
-    if fragile_item:
+    if has_purchase_matching(purchases, 'fragile'):
         return 60
-    else:
-        return 25
+    return 25
 
 flat_tax = 0.2
